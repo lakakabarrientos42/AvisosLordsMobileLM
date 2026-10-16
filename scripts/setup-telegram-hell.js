@@ -23,7 +23,7 @@ const rl = readline.createInterface({ input: stdin, output: stdout });
 let client;
 
 try {
-  console.log('Configura la sesión de Telegram que escuchará @LMEvents, INFO Lords Mobile y Kata KwF Atlas.');
+  console.log('Configura la sesión de Telegram que escuchará @LMEvents, INFO Lords Mobile y Nax Bot Atlas.');
   console.log('Asegúrate de que esta cuenta de Telegram ya esté unida al grupo INFO Lords Mobile.');
   console.log('Obtén API ID y API Hash en https://my.telegram.org/apps.');
   console.log('Si activas .onax en WhatsApp, los comandos / enviados al grupo se ejecutarán con esta cuenta de Telegram.');
@@ -83,7 +83,7 @@ try {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 });
 
   console.log(`\nSesión guardada localmente en ${configPath}.`);
-  console.log('Revisa que esta cuenta esté unida a @LMEvents, INFO Lords Mobile y Kata KwF Atlas; después reinicia NAX.');
+  console.log('Revisa que esta cuenta esté unida a @LMEvents, INFO Lords Mobile y Nax Bot Atlas; después reinicia NAX.');
 } catch (error) {
   console.error(`\nNo se pudo configurar Telegram: ${error.message}`);
   process.exitCode = 1;

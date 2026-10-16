@@ -6,11 +6,12 @@ import { StringSession } from 'teleproto/sessions';
 import { Album, NewMessage } from 'teleproto/events';
 import { connectionManager } from '../lib/funcion/connection-manager.js';
 import { getGroupDataForPlugin } from '../lib/funcion/pluginHelper.js';
+import { getTelegramMediaInfo } from '../lib/funcion/telegram-media.js';
 
 const CONFIG_PATH = path.resolve('database', 'hell-alerts-telegram.json');
 const CHANNEL_USERNAME = 'LMEvents';
 const CHANNEL_URL = 'https://t.me/LMEvents';
-const ONAX_SOURCE_TITLE = 'Kata KwF Atlas';
+const ONAX_SOURCE_TITLE = 'Nax Bot Atlas';
 const INFO_SOURCE_TITLE = 'INFO Lords Mobile';
 const configuredWhatsAppGroupUrl = global.whatsappGroupUrl;
 const WHATSAPP_GROUP_URL = typeof configuredWhatsAppGroupUrl === 'string'
@@ -43,6 +44,10 @@ const EVENT_TYPES = {
     patterns: [/#24\s*h(?:ours?)?\b/i, /\b24\s*(?:h|hours?)\b/i, /\b24\s*hour\s+event\b/i]
   }
 };
+
+function normalizeTelegramTitle(title) {
+  return String(title || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
+}
 
 if (WHATSAPP_GROUP_URL) {
   const groupUrl = new URL(WHATSAPP_GROUP_URL);
@@ -215,25 +220,7 @@ export function formatOnaxMessage(message, isTelegramResponse = false) {
 }
 
 function getOnaxMedia(message) {
-  const media = message.media;
-  if (!media) return null;
-  if (media.photo || media.webpage?.photo) {
-    return { type: 'image', mimeType: 'image/jpeg', fileName: 'telegram-photo.jpg' };
-  }
-
-  const document = media.document || media.webpage?.document;
-  if (!document) return null;
-  const mimeType = document.mimeType || 'application/octet-stream';
-  const fileNameAttribute = document.attributes?.find(attribute =>
-    attribute.className === 'DocumentAttributeFilename'
-  );
-  const fileName = fileNameAttribute?.fileName || 'telegram-file';
-  const size = Number(document.size) || 0;
-
-  if (mimeType.startsWith('image/')) return { type: 'image', mimeType, fileName, size };
-  if (mimeType.startsWith('video/')) return { type: 'video', mimeType, fileName, size };
-  if (mimeType.startsWith('audio/')) return { type: 'audio', mimeType, fileName, size };
-  return { type: 'document', mimeType, fileName, size };
+  return getTelegramMediaInfo(message);
 }
 
 async function sendOnaxText(bot, chatId, text, urlButtons) {
@@ -274,13 +261,15 @@ async function deliverOnaxMessage(client, chatId, config, message, isTelegramRes
         media = await client.downloadMedia(message, {});
         if (!Buffer.isBuffer(media) || !media.length) {
           media = null;
+          console.warn(`[onax] Telegram no devolvió datos para el archivo ${mediaInfo.fileName} del mensaje ${message.id}.`);
           text += '\n\n⚠️ No se pudo descargar el archivo adjunto.';
         } else if (media.length > ONAX_MEDIA_MAX_BYTES) {
           media = null;
+          console.warn(`[onax] Se omitió ${mediaInfo.fileName}: ${media.length} bytes exceden el límite de ${ONAX_MEDIA_MAX_BYTES} bytes.`);
           text += `\n\n⚠️ Se omitió el archivo: supera el límite de ${ONAX_MEDIA_MAX_BYTES / 1024 / 1024} MB.`;
         }
       } catch (error) {
-        console.error(`[onax] No se pudo descargar el archivo del mensaje ${message.id}:`, error);
+        console.error(`[onax] No se pudo descargar ${mediaInfo.fileName} (${mediaInfo.mimeType}) del mensaje ${message.id}:`, error);
         text += '\n\n⚠️ No se pudo descargar el archivo adjunto.';
       }
     }
@@ -336,6 +325,13 @@ async function deliverOnaxMessage(client, chatId, config, message, isTelegramRes
   }
 
   await sendOnaxText(bot, chatId, text, urlButtons);
+}
+
+function getOnaxAttachmentDescription(message) {
+  const mediaInfo = getOnaxMedia(message);
+  return mediaInfo
+    ? ` [adjunto ${mediaInfo.fileName}, ${mediaInfo.mimeType}, ${mediaInfo.size || 0} bytes]`
+    : '';
 }
 
 function finishOnaxRequest(state, request, timedOut = false) {
@@ -397,7 +393,10 @@ async function processOnaxMessage(client, message) {
       request.idleTimeout.unref?.();
       console.log(`[onax] Respuesta del bot de Telegram ${messageId} enviada a WhatsApp ${request.waChatId}.`);
     } catch (error) {
-      console.error(`[onax] Falló el envío de la respuesta ${messageId} a WhatsApp ${request.waChatId}:`, error);
+      console.error(
+        `[onax] Falló el envío de la respuesta ${messageId}${getOnaxAttachmentDescription(message)} a WhatsApp ${request.waChatId}:`,
+        error
+      );
     }
   }
 
@@ -411,7 +410,10 @@ async function processOnaxMessage(client, message) {
       await saveDb();
       console.log(`[onax] Mensaje ${messageId} de ${ONAX_SOURCE_TITLE} enviado al grupo ${chatId}.`);
     } catch (error) {
-      console.error(`[onax] Falló el envío del mensaje ${messageId} al grupo ${chatId}:`, error);
+      console.error(
+        `[onax] Falló el envío del mensaje ${messageId}${getOnaxAttachmentDescription(message)} al grupo ${chatId}:`,
+        error
+      );
     }
   }
 }
@@ -860,7 +862,10 @@ async function startTelegramListener() {
 
       try {
         const matchingDialogs = (await client.getDialogs({ limit: 1000 }))
-          .filter(dialog => dialog.isGroup && dialog.title?.trim().toLocaleLowerCase('es') === ONAX_SOURCE_TITLE.toLocaleLowerCase('es'));
+          .filter(dialog =>
+            (dialog.isGroup || dialog.isChannel) &&
+            normalizeTelegramTitle(dialog.title) === normalizeTelegramTitle(ONAX_SOURCE_TITLE)
+          );
         if (matchingDialogs.length !== 1) {
           throw new Error(`Se esperaba encontrar un solo grupo de Telegram llamado "${ONAX_SOURCE_TITLE}", pero se encontraron ${matchingDialogs.length}.`);
         }

@@ -1158,7 +1158,7 @@ global.wm       = 'NAX - Created by Germán Miño'
 
 ### 🔥 Avisos automáticos de Lords Mobile
 
-El bot puede escuchar publicaciones de `@LMEvents` y `INFO Lords Mobile`, además de mensajes del grupo `Kata KwF Atlas` en Telegram.
+El bot puede escuchar publicaciones de `@LMEvents` y `INFO Lords Mobile`, además de mensajes del grupo `Nax Bot Atlas` en Telegram.
 
 1. Une la cuenta de Telegram dedicada a [@LMEvents](https://t.me/LMEvents) y al grupo `INFO Lords Mobile`.
 2. Crea una aplicación en [my.telegram.org/apps](https://my.telegram.org/apps).
@@ -1169,9 +1169,9 @@ La sesión y las credenciales se guardan en `database/hell-alerts-telegram.json`
 
 Para enviar al grupo una vista previa de la publicación más reciente de `INFO Lords Mobile`, ejecuta `.infotest` como administrador. La prueba incluye todas las imágenes disponibles (hasta ocho) y no modifica el registro de avisos.
 
-### Reenvío de Kata KwF Atlas (Telegram)
+### Reenvío de Nax Bot Atlas (Telegram)
 
-1. Asegúrate de que la cuenta de Telegram configurada esté dentro de `Kata KwF Atlas`.
+1. Asegúrate de que la cuenta de Telegram configurada esté dentro del grupo `Nax Bot Atlas`.
 2. En el grupo de WhatsApp de destino, ejecuta `.onax` como administrador para empezar a reenviar mensajes nuevos. Ejecuta `.onax off` para detenerlos.
 3. Cualquier miembro puede enviar un mensaje que empiece con `/` en el grupo de WhatsApp; NAX enviará ese comando a Telegram y devolverá las respuestas del bot al mismo grupo. Solo se permite un comando pendiente por grupo a la vez; hay un límite de 500 caracteres y espera de 2.5 segundos por miembro.
 4. Telegram ejecuta esos comandos bajo la identidad y los permisos de la cuenta conectada. No reenvíes comandos con acciones sensibles si no quieres que se ejecuten con esa cuenta.
