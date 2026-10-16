@@ -258,7 +258,7 @@ await restaurarConfiguraciones();
 
 let opcion = '1';
 const authFolder = global.authFile;
-const qrImagePath = path.resolve(authFolder, 'whatsapp-link-qr.png');
+const qrImagePath = path.resolve('whatsapp-link-qr.png');
 let qrImageOpened = false;
 let phoneNumber = global.botnumber || process.argv.find(arg => /^\+\d+$/.test(arg));
 
@@ -834,7 +834,8 @@ async function connectionUpdate(update) {
           width: 1024,
           color: { dark: '#000000', light: '#FFFFFF' },
         });
-        console.log(chalk.yellow(`[ ℹ️ ] QR actualizado: ${qrImagePath}`));
+        console.log(chalk.yellow(`[ ℹ️ ] Imagen QR actualizada: ${qrImagePath}`));
+        console.log(chalk.yellow('[ ℹ️ ] Abre whatsapp-link-qr.png desde los archivos del hosting y escanea el QR más reciente; los anteriores caducan.'));
 
         console.log(chalk.yellow('[ ℹ️ ] Escanea el código QR mostrado en la consola:'));
         qrcode.generate(qr, { small: true });

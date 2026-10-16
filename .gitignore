@@ -10,6 +10,7 @@
 /database/
 /database.json
 /.database.json.lock
+/whatsapp-link-qr.png
 /session/
 /db/
 *.db
