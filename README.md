@@ -770,6 +770,8 @@ Elegí tu plataforma y desplegá el acordeón — cada una tiene su guía comple
 
 `config.js` es local y no se publica en GitHub. Si falta al iniciar, NAX lo crea desde `config.example.js`; así cada instalación puede arrancar con valores limpios y vincular su propia sesión de WhatsApp por QR. Si el hosting muestra `ERR_MODULE_NOT_FOUND` para `config.js`, actualiza o vuelve a desplegar desde la rama `main` para instalar esta reparación.
 
+En hostings sin terminal interactiva, si todavía no hay sesión de WhatsApp, NAX selecciona QR automáticamente y lo imprime en la consola del servicio. Abre la consola del hosting, escanéalo desde **WhatsApp → Dispositivos vinculados** y vuelve a desplegar el servicio si no está usando la última versión de `main`.
+
 <details>
 <summary><b>☁️ BoxMine (Recomendado — sin terminal)</b></summary>
 

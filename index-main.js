@@ -371,6 +371,13 @@ async function start(file) {
     return;
   }
 
+  if (!process.stdin.isTTY) {
+    console.log(chalk.yellow('[ ℹ️ ] Sin sesión y sin terminal interactiva: iniciaré el vínculo por código QR.'));
+    process.argv.push('qr');
+    arrancarNormal(file);
+    return;
+  }
+
   arrancarModoPanel(file);
   if (preguntando) {
     isRunning = false;

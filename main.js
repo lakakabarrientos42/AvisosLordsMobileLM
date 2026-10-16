@@ -836,7 +836,12 @@ async function connectionUpdate(update) {
         });
         console.log(chalk.yellow(`[ ℹ️ ] QR actualizado: ${qrImagePath}`));
 
-        if (!qrImageOpened) {
+        console.log(chalk.yellow('[ ℹ️ ] Escanea el código QR mostrado en la consola:'));
+        qrcode.generate(qr, { small: true });
+
+        const hasImageViewer = platform === 'win32' || platform === 'darwin' ||
+          Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
+        if (!qrImageOpened && hasImageViewer) {
           const command = platform === 'win32' ? 'rundll32.exe' : platform === 'darwin' ? 'open' : 'xdg-open';
           const args = platform === 'win32' ? ['url.dll,FileProtocolHandler', qrImagePath] : [qrImagePath];
           const imageViewer = spawn(command, args, { detached: true, stdio: 'ignore' });
@@ -849,7 +854,7 @@ async function connectionUpdate(update) {
       } catch (error) {
         console.error(`[ QR ] No se pudo crear la imagen QR en ${qrImagePath}:`, error.message);
         console.log(chalk.yellow('[ ℹ️ ] Escanea el código QR en la terminal:'));
-        qrcode.generate(qr, { small: false });
+        qrcode.generate(qr, { small: true });
       }
     }
   }
