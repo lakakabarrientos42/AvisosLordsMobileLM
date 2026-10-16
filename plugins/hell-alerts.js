@@ -1016,6 +1016,35 @@ const handler = async (m, { conn, command, args }) => {
 
   if (cmd === 'onax') {
     const setting = (args[0] || 'on').toLowerCase();
+    if (setting === 'test') {
+      const state = getListenerState();
+      if (state.status !== 'connected' || !state.client || !state.forwardChat) {
+        return m.reply(`❌ Telegram no está conectado al grupo "${ONAX_SOURCE_TITLE}".`);
+      }
+
+      const botJid = normalizeJid(conn);
+      if (!botJid) return m.reply('❌ No pude identificar la sesión de WhatsApp para recibir el archivo.');
+
+      try {
+        const messages = await state.client.getMessages(state.forwardChat, { limit: 100 });
+        const spreadsheet = messages.find(message => {
+          if (message.out) return false;
+          const mediaInfo = getOnaxMedia(message);
+          return mediaInfo?.type === 'document' && /\.(?:xlsx?|xlsm|xlsb|csv)$/i.test(mediaInfo.fileName);
+        });
+        if (!spreadsheet) {
+          return m.reply(`❌ No encontré un Excel o CSV reciente en "${ONAX_SOURCE_TITLE}" (busqué hasta 100 mensajes).`);
+        }
+
+        await deliverOnaxMessage(state.client, m.chat, { botJid }, spreadsheet);
+        console.log(`[onax] Prueba manual del archivo ${getOnaxAttachmentDescription(spreadsheet)} enviada al grupo ${m.chat}.`);
+        return m.reply(`✅ Envié una prueba del archivo "${getOnaxMedia(spreadsheet).fileName}".`);
+      } catch (error) {
+        console.error(`[onax] Falló la prueba del Excel al grupo ${m.chat}:`, error);
+        return m.reply('❌ No pude enviar el Excel de prueba. Revisa los registros [onax] del hosting.');
+      }
+    }
+
     if (setting === 'on' || setting === 'enable') {
       const state = getListenerState();
       if (state.status !== 'connected' || !state.client || !state.forwardChat) {
@@ -1050,7 +1079,7 @@ const handler = async (m, { conn, command, args }) => {
       await saveDb();
       return m.reply(`✅ Reenvío de "${ONAX_SOURCE_TITLE}" desactivado en este grupo.`);
     }
-    return m.reply('Uso: .onax | .onax off');
+    return m.reply('Uso: .onax | .onax off | .onax test');
   }
 
   if (cmd === 'helltest') {
@@ -1241,7 +1270,7 @@ const handler = async (m, { conn, command, args }) => {
   return m.reply('Comandos: .hells on|off (Solitario, Infierno y 24h), .onax [off], .listhell, .helltest, .infotest');
 };
 
-handler.help = ['hells on|off', 'onax [off]', 'listhell', 'helltest', 'infotest'];
+handler.help = ['hells on|off', 'onax [off|test]', 'listhell', 'helltest', 'infotest'];
 handler.tags = ['tools'];
 handler.command = /^(hells|onax|listhell|helltest|infotest)$/i;
 handler.group = true;

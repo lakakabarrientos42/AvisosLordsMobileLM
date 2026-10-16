@@ -1172,7 +1172,7 @@ Para enviar al grupo una vista previa de la publicación más reciente de `INFO 
 ### Reenvío de Nax Bot Atlas (Telegram)
 
 1. Asegúrate de que la cuenta de Telegram configurada esté dentro del grupo `Nax Bot Atlas`.
-2. En el grupo de WhatsApp de destino, ejecuta `.onax` como administrador para empezar a reenviar mensajes nuevos. Ejecuta `.onax off` para detenerlos.
+2. En el grupo de WhatsApp de destino, ejecuta `.onax` como administrador para empezar a reenviar mensajes nuevos. Ejecuta `.onax off` para detenerlos. `.onax test` envía a ese grupo el Excel/CSV más reciente del origen para comprobar el reenvío sin modificar el cursor de mensajes.
 3. Cualquier miembro puede enviar un mensaje que empiece con `/` en el grupo de WhatsApp; NAX enviará ese comando a Telegram y devolverá las respuestas del bot al mismo grupo. Solo se permite un comando pendiente por grupo a la vez; hay un límite de 500 caracteres y espera de 2.5 segundos por miembro.
 4. Telegram ejecuta esos comandos bajo la identidad y los permisos de la cuenta conectada. No reenvíes comandos con acciones sensibles si no quieres que se ejecuten con esa cuenta.
 5. Las respuestas del bot de Telegram vuelven a WhatsApp con el texto original, sin traducción ni encabezados agregados. Los botones con enlaces se convierten en enlaces y botones URL de WhatsApp. Usa `.listhell` para consultar el estado.
