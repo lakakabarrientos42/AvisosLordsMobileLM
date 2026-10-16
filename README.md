@@ -768,6 +768,8 @@ Elegí tu plataforma y desplegá el acordeón — cada una tiene su guía comple
 
 </div>
 
+`config.js` es local y no se publica en GitHub. Si falta al iniciar, NAX lo crea desde `config.example.js`; así cada instalación puede arrancar con valores limpios y vincular su propia sesión de WhatsApp por QR.
+
 <details>
 <summary><b>☁️ BoxMine (Recomendado — sin terminal)</b></summary>
 
