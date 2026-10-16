@@ -1,0 +1,195 @@
+const baileysMod = await import('@whiskeysockets/baileys');
+const WAMessageStubType = baileysMod.WAMessageStubType || baileysMod.default?.WAMessageStubType;
+const updateMessageWithReceipt = baileysMod.updateMessageWithReceipt || baileysMod.default?.updateMessageWithReceipt;
+const updateMessageWithReaction = baileysMod.updateMessageWithReaction || baileysMod.default?.updateMessageWithReaction || function(msg, reaction) {
+    if (!msg.reactions) msg.reactions = [];
+    const idx = msg.reactions.findIndex(r => r.key?.participant === reaction.key?.participant);
+    if (reaction.text) {
+        if (idx >= 0) msg.reactions[idx] = reaction;
+        else msg.reactions.push(reaction);
+    } else {
+        if (idx >= 0) msg.reactions.splice(idx, 1);
+    }
+};
+const proto = baileysMod.proto || baileysMod.default?.proto;
+const isJidBroadcast = baileysMod.isJidBroadcast || baileysMod.default?.isJidBroadcast;
+
+const TIME_TO_DATA_STALE = 5 * 60 * 1000;
+const MAX_MESSAGES_PER_JID = 20;
+const MAX_JIDS = 300;
+const CLEANUP_INTERVAL = 10 * 60 * 1000;
+
+function isJidGroup(jid) {
+    return jid?.endsWith?.('@g.us') || false;
+}
+
+function makeInMemoryStore() {
+    let chats = {};
+    let messages = {};
+    let state = { connection: 'close' };
+
+    function loadMessage(jid, id = null) {
+        let message = null;
+        if (jid && !id) {
+            id = jid;
+            const filter = m => m.key?.id == id;
+            const messageFind = Object.entries(messages).find(([, msgs]) => msgs.find(filter));
+            message = messageFind?.[1]?.find(filter);
+        } else {
+            jid = jid?.decodeJid?.();
+            if (!(jid in messages)) return null;
+            message = messages[jid]?.find(m => m.key.id == id);
+        }
+        return message || null;
+    }
+
+    async function fetchGroupMetadata(jid, groupMetadata) {
+        jid = jid?.decodeJid?.();
+        if (!isJidGroup(jid)) return;
+        if (!(jid in chats)) return (chats[jid] = { id: jid });
+        const isRequiredToUpdate = !chats[jid].metadata || Date.now() - (chats[jid].lastfetch || 0) > TIME_TO_DATA_STALE;
+        if (isRequiredToUpdate) {
+            const metadata = await groupMetadata?.(jid);
+            if (metadata) Object.assign(chats[jid], { subject: metadata.subject, lastfetch: Date.now(), metadata });
+        }
+        return chats[jid].metadata;
+    }
+
+    function upsertMessage(jid, message, type = 'append') {
+        jid = jid?.decodeJid?.();
+        
+        const connectionTime = global.timestamp?.connect?.getTime() || Date.now();
+        const msgTimestamp = (message.messageTimestamp || 0) * 1000;
+        
+        if (msgTimestamp < connectionTime - 30000) {
+            return;
+        }
+        
+        if (!(jid in messages)) messages[jid] = [];
+        delete message.message?.messageContextInfo;
+        delete message.message?.senderKeyDistributionMessage;
+        const msg = loadMessage(jid, message.key.id);
+        if (msg) Object.assign(msg, message);
+        else {
+            type === 'append' ? messages[jid].push(message) : messages[jid].unshift(message);
+            if (messages[jid].length > MAX_MESSAGES_PER_JID) {
+                messages[jid] = messages[jid].slice(-MAX_MESSAGES_PER_JID);
+            }
+        }
+    }
+
+    function cleanupStaleData() {
+        const jidList = Object.keys(messages);
+        if (jidList.length > MAX_JIDS) {
+            const toDelete = jidList.slice(0, jidList.length - MAX_JIDS);
+            for (const jid of toDelete) delete messages[jid];
+        }
+
+        for (const jid in chats) {
+            if (chats[jid].presences) delete chats[jid].presences;
+        }
+    }
+
+    setInterval(cleanupStaleData, CLEANUP_INTERVAL).unref?.();
+
+    function bind(conn) {
+        if (!conn.chats) conn.chats = {};
+
+conn.ev.on('messages.upsert', ({ messages: newMessages, type }) => {
+            if (!Array.isArray(newMessages)) return;
+            if (!['append', 'notify'].includes(type)) return;
+            const connectionTime = global.timestamp?.connect?.getTime() || Date.now();
+
+            for (const msg of newMessages) {
+                try {
+                    const jid = msg.key.remoteJid?.decodeJid?.();
+                    if (!jid || isJidBroadcast(jid)) continue;
+
+                    const msgTimestamp = (msg.messageTimestamp || 0) * 1000;
+                    if (msgTimestamp < connectionTime - 30000) continue;
+
+                    upsertMessage(jid, proto.WebMessageInfo.fromObject(msg), type);
+                } catch {}
+            }
+        });
+
+        conn.ev.on('messages.update', updates => {
+            for (const { key, update } of updates) {
+                const jid = key.remoteJid?.decodeJid?.();
+                const message = loadMessage(jid, key.id);
+                if (message) Object.assign(message, update);
+            }
+        });
+
+        conn.ev.on('message-receipt.update', updates => {
+            for (const { key, receipt } of updates) {
+                const jid = key.remoteJid?.decodeJid?.();
+                const message = loadMessage(jid, key.id);
+                if (message) updateMessageWithReceipt(message, receipt);
+            }
+        });
+
+        conn.ev.on('messages.reaction', updates => {
+            for (const { key, reaction } of updates) {
+                const jid = key.remoteJid?.decodeJid?.();
+                const message = loadMessage(jid, key.id);
+                if (message) updateMessageWithReaction(message, reaction);
+            }
+        });
+
+        conn.ev.on('chats.set', ({ chats: newChats }) => {
+            for (const chat of newChats) {
+                const jid = chat.id.decodeJid();
+                if (!(jid in chats)) chats[jid] = { id: jid };
+                Object.assign(chats[jid], chat);
+            }
+        });
+
+        conn.ev.on('contacts.set', ({ contacts: newContacts }) => {
+            for (const contact of newContacts) {
+                const jid = contact.id.decodeJid();
+                if (!(jid in chats)) chats[jid] = { id: jid };
+                Object.assign(chats[jid], contact);
+            }
+        });
+
+        conn.ev.on('chats.upsert', newChats => {
+            for (const chat of newChats) {
+                const jid = chat.id.decodeJid();
+                if (!(jid in chats)) chats[jid] = { id: jid };
+                Object.assign(chats[jid], chat);
+            }
+        });
+
+        conn.ev.on('chats.update', updates => {
+            for (const update of updates) {
+                const jid = update.id.decodeJid();
+                if (!(jid in chats)) chats[jid] = { id: jid };
+                Object.assign(chats[jid], update);
+            }
+        });
+
+        conn.ev.on('presence.update', ({ id, presences: updates }) => {
+            const jid = id.decodeJid();
+            if (!(jid in chats)) chats[jid] = { id: jid };
+            chats[jid].presences = updates;
+        });
+
+        
+    }
+
+    function toJSON() {
+        return { chats, messages };
+    }
+
+    function fromJSON(json) {
+        Object.assign(chats, json.chats);
+        for (const jid in json.messages) {
+            messages[jid] = json.messages[jid].map(m => m && proto.WebMessageInfo.fromObject(m));
+        }
+    }
+
+    return { bind, loadMessage, toJSON, fromJSON, upsertMessage };
+}
+
+export default makeInMemoryStore();

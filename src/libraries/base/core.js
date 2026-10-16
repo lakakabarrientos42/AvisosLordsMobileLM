@@ -1,0 +1,102 @@
+import path from 'path';
+import chalk from 'chalk';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import {fileTypeFromBuffer} from 'file-type';
+import {format} from 'util';
+import {fileURLToPath} from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export const coreUtils = {
+  decodeJid(jid) {
+    if (!jid || typeof jid !== 'string') return (!nullish(jid) && jid) || null;
+    if (typeof jid.decodeJid === 'function') return jid.decodeJid();
+    const _r = /([^@]+)@([\w.]+)/.exec(jid);
+    if (!_r) return jid;
+    const [, user, server] = _r;
+    return `${user.split(':')[0]}@${server}`;
+  },
+
+  logger: {
+    info(...args) {
+      const msg = format(...args);
+      if (msg.includes('Closing open session') || msg.includes('closed session')) return;
+      console.log(
+        chalk.bold.bgRgb(51, 204, 51)('INFO '),
+        `[${chalk.rgb(255, 255, 255)(new Date().toUTCString())}]:`,
+        chalk.cyan(msg),
+      );
+    },
+    error(...args) {
+      console.log(
+        chalk.bold.bgRgb(247, 38, 33)('ERROR '),
+        `[${chalk.rgb(255, 255, 255)(new Date().toUTCString())}]:`,
+        chalk.rgb(255, 38, 0)(format(...args)),
+      );
+    },
+    warn(...args) {
+      const msg = format(...args);
+      if (msg.includes('Closing open session') || msg.includes('closed session')) return;
+      console.log(
+        chalk.bold.bgRgb(255, 153, 0)('WARNING '),
+        `[${chalk.rgb(255, 255, 255)(new Date().toUTCString())}]:`,
+        chalk.redBright(msg),
+      );
+    },
+    trace(...args) {
+      console.log(
+        chalk.grey('TRACE '),
+        `[${chalk.rgb(255, 255, 255)(new Date().toUTCString())}]:`,
+        chalk.white(format(...args)),
+      );
+    },
+    debug(...args) {
+      console.log(
+        chalk.bold.bgRgb(66, 167, 245)('DEBUG '),
+        `[${chalk.rgb(255, 255, 255)(new Date().toUTCString())}]:`,
+        chalk.white(format(...args)),
+      );
+    },
+  },
+
+  async getFile(PATH, saveToFile = false) {
+    let res; let filename;
+    const data = Buffer.isBuffer(PATH) ? PATH : PATH instanceof ArrayBuffer ? PATH.toBuffer() : /^data:.*?\/.*?;base64,/i.test(PATH) ? Buffer.from(PATH.split`,`[1], 'base64') : /^https?:\/\//.test(PATH) ? await (res = await fetch(PATH, { signal: AbortSignal.timeout(15000) })).buffer() : fs.existsSync(PATH) ? (filename = PATH, fs.readFileSync(PATH)) : typeof PATH === 'string' ? PATH : Buffer.alloc(0);
+    if (!Buffer.isBuffer(data)) throw new TypeError('Result is not a buffer');
+    const type = await fileTypeFromBuffer(data) || {
+      mime: 'application/octet-stream',
+      ext: '.bin',
+    };
+    if (data && saveToFile && !filename) (filename = path.join(__dirname, '../tmp/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + type.ext), await fs.promises.writeFile(filename, data));
+    return {
+      res,
+      filename,
+      ...type,
+      data,
+      deleteFile() {
+        return filename && fs.promises.unlink(filename);
+      },
+    };
+  },
+
+  waitEvent(conn, eventName, is = () => true, maxTries = 25) {
+    return new Promise((resolve, reject) => {
+      let tries = 0;
+      const on = (...args) => {
+        if (++tries > maxTries) {
+          conn.ev.off(eventName, on);
+          reject(new Error('Max tries reached'));
+        } else if (is(...args)) {
+          conn.ev.off(eventName, on);
+          resolve(...args);
+        }
+      };
+      conn.ev.on(eventName, on);
+    });
+  }
+};
+
+export function nullish(args) {
+  return !(args !== null && args !== undefined);
+}

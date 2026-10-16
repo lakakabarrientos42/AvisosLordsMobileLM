@@ -1,0 +1,63 @@
+import fetch from 'node-fetch';
+import {FormData, Blob} from 'formdata-node';
+import {fileTypeFromBuffer} from 'file-type';
+
+const MAX_SIZE = 25 * 1024 * 1024;
+
+const ft = async (url, options = {}) => {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 30000);
+  try { const r = await fetch(url, {...options, signal: c.signal}); clearTimeout(t); return r; }
+  catch (e) { clearTimeout(t); throw e; }
+};
+
+export default async (buffer) => {
+  if (!buffer || !buffer.length) throw new Error('[uploadImage] Buffer inválido');
+  if (buffer.length > MAX_SIZE) throw new Error('[uploadImage] Archivo demasiado grande (máximo 25MB)');
+  const type = await fileTypeFromBuffer(buffer);
+  if (!type) throw new Error('[uploadImage] No se pudo detectar el tipo de archivo');
+  const {ext, mime} = type;
+  const uint8 = new Uint8Array(buffer);
+
+  const quax = async () => {
+    const form = new FormData();
+    form.append('files[]', new Blob([uint8], {type: mime}), 'tmp.' + ext);
+    const res = await ft('https://qu.ax/upload.php', {method: 'POST', body: form});
+    const json = await res.json();
+    if (!json?.success) throw new Error('qu.ax: ' + JSON.stringify(json));
+    return json.files[0].url;
+  };
+
+  const telegraph = async () => {
+    const form = new FormData();
+    form.append('file', new Blob([uint8], {type: mime}), 'tmp.' + ext);
+    const res = await ft('https://telegra.ph/upload', {method: 'POST', body: form});
+    const json = await res.json();
+    if (Array.isArray(json) && json[0]) {
+      const path = json[0].src || json[0].path || json[0].url || null;
+      if (path) return 'https://telegra.ph' + path;
+    }
+    throw new Error('telegra.ph: respuesta inesperada ' + JSON.stringify(json));
+  };
+
+  const catbox = async () => {
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', new Blob([uint8], {type: mime}), 'tmp.' + ext);
+    const res = await ft('https://catbox.moe/user/api.php', {method: 'POST', body: form});
+    const url = await res.text();
+    if (!url.startsWith('https://')) throw new Error('catbox: ' + url);
+    return url;
+  };
+
+  let lastErr;
+  for (const [nombre, fn] of [['qu.ax', quax], ['telegra.ph', telegraph], ['catbox', catbox]]) {
+    try {
+      return await fn();
+    } catch (e) {
+      console.error('[uploadImage]', nombre, 'falló:', e.message);
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+};
