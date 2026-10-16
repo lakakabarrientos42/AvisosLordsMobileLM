@@ -371,9 +371,13 @@ async function start(file) {
     return;
   }
 
-  if (!process.stdin.isTTY) {
-    console.log(chalk.yellow('[ ℹ️ ] Sin sesión y sin terminal interactiva: iniciaré el vínculo por código QR.'));
-    process.argv.push('qr');
+  const headlessHosting = !process.stdin.isTTY ||
+    process.argv.includes('--server') ||
+    Boolean(process.env.P_SERVER_UUID || process.env.PTERODACTYL) ||
+    (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY);
+  if (headlessHosting) {
+    console.log(chalk.yellow('[ ℹ️ ] Hosting sin sesión de WhatsApp: iniciaré el vínculo por código QR, sin esperar a la Torre de Control.'));
+    if (!process.argv.includes('qr')) process.argv.push('qr');
     arrancarNormal(file);
     return;
   }

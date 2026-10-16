@@ -770,7 +770,7 @@ Elegí tu plataforma y desplegá el acordeón — cada una tiene su guía comple
 
 `config.js` es local y no se publica en GitHub. Si falta al iniciar, NAX lo crea desde `config.example.js`; así cada instalación puede arrancar con valores limpios y vincular su propia sesión de WhatsApp por QR. Si el hosting muestra `ERR_MODULE_NOT_FOUND` para `config.js`, actualiza o vuelve a desplegar desde la rama `main` para instalar esta reparación.
 
-En hostings sin terminal interactiva, si todavía no hay sesión de WhatsApp, NAX selecciona QR automáticamente y lo imprime en la consola del servicio. También guarda el QR actual como `whatsapp-link-qr.png` en la carpeta principal del bot; puedes abrir esa imagen desde los archivos del hosting y escanear el código más reciente desde **WhatsApp → Dispositivos vinculados**. Los QR caducan y se reemplazan al reconectar. La imagen es local y está excluida de Git. Vuelve a desplegar el servicio desde `main` para obtener esta opción.
+En hostings Linux sin escritorio, en contenedores Pterodactyl y al iniciar con `--server`, si todavía no hay sesión de WhatsApp NAX selecciona QR automáticamente y no espera a la Torre de Control. Lo imprime en la consola y guarda el QR actual como `whatsapp-link-qr.png` en la carpeta principal del bot; abre esa imagen desde los archivos del hosting y escanea el código más reciente desde **WhatsApp → Dispositivos vinculados**. Los QR caducan y se reemplazan al reconectar. La imagen es local y está excluida de Git. Vuelve a desplegar el servicio desde `main` para obtener esta opción.
 
 <details>
 <summary><b>☁️ BoxMine (Recomendado — sin terminal)</b></summary>
