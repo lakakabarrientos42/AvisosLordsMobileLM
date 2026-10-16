@@ -768,7 +768,7 @@ Elegí tu plataforma y desplegá el acordeón — cada una tiene su guía comple
 
 </div>
 
-`config.js` es local y no se publica en GitHub. Si falta al iniciar, NAX lo crea desde `config.example.js`; así cada instalación puede arrancar con valores limpios y vincular su propia sesión de WhatsApp por QR.
+`config.js` es local y no se publica en GitHub. Si falta al iniciar, NAX lo crea desde `config.example.js`; así cada instalación puede arrancar con valores limpios y vincular su propia sesión de WhatsApp por QR. Si el hosting muestra `ERR_MODULE_NOT_FOUND` para `config.js`, actualiza o vuelve a desplegar desde la rama `main` para instalar esta reparación.
 
 <details>
 <summary><b>☁️ BoxMine (Recomendado — sin terminal)</b></summary>
